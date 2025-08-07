@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import * as bcrypt from 'bcrypt';
+import { BCRYPT_SALT_ROUNDS } from 'src/config';
 
 @Injectable()
 export class HashPasswordMiddleware implements NestMiddleware {
@@ -17,7 +18,7 @@ export class HashPasswordMiddleware implements NestMiddleware {
 
     const hashedPassword = await bcrypt.hash(
       password,
-      parseInt(process.env.BCRYPT_SALT_ROUNDS),
+      parseInt(BCRYPT_SALT_ROUNDS),
     );
 
     req.body.password = hashedPassword;

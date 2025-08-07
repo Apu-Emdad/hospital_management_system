@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { NODE_ENV } from 'src/config';
 
 @Catch()
 export class GlobalErrorHandler implements ExceptionFilter {
@@ -38,7 +39,7 @@ export class GlobalErrorHandler implements ExceptionFilter {
       path: request.url,
       timestamp: new Date().toISOString(),
       details:
-        process.env.NODE_ENV === 'DEVELOPMENT'
+        NODE_ENV === 'DEVELOPMENT'
           ? { message: exception.message, exception: exception }
           : undefined,
     });
