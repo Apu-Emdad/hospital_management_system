@@ -13,8 +13,139 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  DOCTOR
+  STAFF
+  PATIENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum Days {
+  SATURDAY
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+enum StaffRole {
+  RECEPTIONIST
+  NURSE
+  TECHNICIAN
+}
+
+enum Shift {
+  MORNING
+  EVENING
+  NIGHT
+}
+
+enum BloodGroup {
+  A_POS  @map("A+")
+  A_NEG  @map("A-")
+  B_POS  @map("B+")
+  B_NEG  @map("B-")
+  AB_POS @map("AB+")
+  AB_NEG @map("AB-")
+  O_POS  @map("O+")
+  O_NEG  @map("O-")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  MANAGER
+  DEV
+}
+
 model User {
-  id    Int    @id @default(autoincrement())
-  name  String
-  email String @unique
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(255)
+  role          Role
+  email         String   @unique @db.VarChar(128)
+  password      String
+  phone         String   @unique @db.VarChar(14)
+  gender        Gender
+  address       String   @db.VarChar(255)
+  birth_date    DateTime @db.Date
+  is_deleted    Boolean? @default(false) @db.Boolean
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  created_by    Int?
+  createdBy     User?    @relation("UserCreatedBy", fields: [created_by], references: [id])
+  createdUsers  User[]   @relation("UserCreatedBy")
+  modified_by   Int?
+  modifiedBy    User?    @relation("UserModifiedBy", fields: [modified_by], references: [id])
+  modifiedUsers User[]   @relation("UserModifiedBy")
+
+  //Admins
+  admin   Admin?
+  //doctors
+  doctor  Doctor?  @relation("DoctorUserID")
+  //staff
+  staff   Staff?
+  //patients
+  Patient Patient?
+
+  @@map("users")
+}
+
+model Admin {
+  id         Int       @id @default(autoincrement())
+  user_id    Int       @unique
+  userID     User      @relation(fields: [user_id], references: [id])
+  admin_role AdminRole
+
+  @@map("admins")
+}
+
+model Doctor {
+  id               Int      @id @default(autoincrement())
+  user_id          Int      @unique
+  userID           User     @relation("DoctorUserID", fields: [user_id], references: [id])
+  qualification    String   @db.VarChar(255)
+  available_days   Days
+  available_times  String
+  experience_years String
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  @@map("doctors")
+}
+
+model Staff {
+  id          Int       @id @default(autoincrement())
+  user_id     Int       @unique
+  userID      User      @relation(fields: [user_id], references: [id])
+  staff_role  StaffRole
+  shift       Shift
+  shift_start DateTime  @db.Time
+  shift_end   DateTime  @db.Time
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  @@map("staffs")
+}
+
+model Patient {
+  id                             Int        @id @default(autoincrement())
+  user_id                        Int        @unique
+  user                           User       @relation(fields: [user_id], references: [id])
+  medical_history                String     @db.Text
+  allergies                      String     @db.Text
+  blood_group                    BloodGroup
+  emergency_contact_name         String     @db.VarChar(100)
+  emergency_contact_phone        String     @db.VarChar(20)
+  emergency_contact_relationship String     @db.VarChar(50)
+  created_at                     DateTime   @default(now())
+  updated_at                     DateTime   @updatedAt
+
+  @@map("patients")
 }

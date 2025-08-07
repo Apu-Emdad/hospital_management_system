@@ -1,58 +1,3 @@
-## Project setup
-
-```bash
-$ yarn install
-```
-
-## Compile and run the project
-
-```bash
-# development
-$ yarn run start
-
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ yarn install -g mau
-$ mau deploy
-```
-
-# NestJs REST API tutorial for FreeCodeCamp
-
-### Run the API in development mode
-
-```javascript
-yarn // install
-yarn db:dev:restart // start postgres in docker and push migrations
-yarn start:dev // start api in dev mode
-
-docker compose up dev-db -d
-```
-
 # NestJS
 
 ## Installations
@@ -63,6 +8,9 @@ nest new hospital-management
 yarn add -D prisma
 yarn add @prisma/client # run after installation - npx prisma init
 yarn add @nestjs/config
+yarn add bcrypt
+yarn add -D @types/bcrypt
+
 ```
 
 ## Create NEST project
@@ -293,7 +241,7 @@ npx prisma generate
 npx prisma studio
 ```
 
-### Prisma Error Codes
+## Prisma Error Codes
 
 | Error Code  | Meaning                                                                 | Example & Handling                                                   |
 | ----------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -307,7 +255,78 @@ npx prisma studio
 | P6009       | Response size limit exceeded                                            | Query response exceeded Prisma’s \~5MB limit                         |
 | P5011       | Too many requests                                                       | Exceeded allowed request threshold; Prisma throttled the requests    |
 
-# @Global Decorator
+## Self Relation in Prisma Model
+
+```typescript
+
+model User {
+  id            Int      @id @default(autoincrement())
+  created_by    Int?
+  createdBy     User?    @relation("UserCreatedBy", fields: [created_by], references: [id])
+  createdUsers  User[]   @relation("UserCreatedBy")
+  modified_by   Int?
+  modifiedBy    User?    @relation("UserModifiedBy", fields: [modified_by], references: [id])
+  modifiedUsers User[]   @relation("UserModifiedBy")
+
+  @@map("users")
+}
+
+```
+
+```
+created_by Int?
+```
+
+- This is a **foreign key field**.
+- It stores the `id` of the user who created this user.
+- It's optional (`Int?`) — meaning a user might not have been created by another user (e.g., first admin).
+
+```txt
+createdBy User? @relation("UserCreatedBy", fields: [created_by], references: [id])
+```
+
+---
+
+- This is the **relation field** that tells Prisma:
+  - “`created_by` refers to a `User` record (their `id`).”
+- It allows you to do:
+
+```txt
+const user = await prisma.user.findUnique({ include: { createdBy: true } });
+```
+
+And access `user.createdBy.name`, etc.
+
+---
+
+```txt
+createdUsers User[] @relation("UserCreatedBy")
+```
+
+- This is the **inverse relation**.
+- It lets a user fetch all the users they’ve created.
+- You can do:
+
+```txt
+const admin = await prisma.user.findUnique({ include: { createdUsers: true } });
+```
+
+**Why All 3 Are Needed**
+
+| Field        | Purpose                                              |
+| ------------ | ---------------------------------------------------- |
+| created_by   | Stores the FK (just a number)                        |
+| createdBy    | Gives Prisma access to the creator user              |
+| createdUsers | Gives Prisma access to the users this person created |
+
+All three work together to:
+
+- Create a full one-to-many self-relation
+- Allow queries in **both directions**:
+  - "Who created this user?"
+  - "Which users did I create?"
+
+# @Global Module
 
 The `@Global()` decorator makes a **module's providers available everywhere** in the app — **without needing to import the module** in every other module.
 
@@ -496,6 +515,127 @@ createUser(@Body() createUserDto: CreateUserDto) {
 | @MinLength(n) | Minimum string length       | @MinLength(5) password: string; |
 | @Max(n)       | Max numeric value           | @Max(100) score: number;        |
 | @IsOptional() | Field is optional           | @IsOptional() age?: number;     |
+
+# Global Exception Handler
+
+`src\errors\exceptionHandler.ts`
+
+```typescript
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+
+@Catch()
+export class GlobalErrorHandler implements ExceptionFilter {
+  catch(exception: any, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse();
+    const request = ctx.getRequest();
+
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    let message = 'An unexpected error occurred';
+
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      message = exception.message;
+    }
+
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      if (exception.code === 'P2002') {
+        status = HttpStatus.CONFLICT;
+        message = `Duplicate value for unique field: ${exception.meta?.target?.[0]}`;
+      }
+      // Handle more Prisma error codes if needed
+    }
+
+    console.log('exception.message', exception.message);
+
+    response.status(status).json({
+      status: 'failed',
+      message,
+      path: request.url,
+      timestamp: new Date().toISOString(),
+      details:
+        process.env.NODE_ENV === 'DEVELOPMENT'
+          ? { message: exception.message, exception: exception }
+          : undefined,
+    });
+  }
+}
+```
+
+`main.ts`
+
+```typescript
+//global error handler
+app.useGlobalFilters(new GlobalErrorHandler());
+```
+
+# Setting Up middleware
+
+`src\user\middlewares\hashPassword.ts`
+
+```typescript
+import {
+  Injectable,
+  NestMiddleware,
+  BadRequestException,
+} from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
+import * as bcrypt from 'bcrypt';
+
+@Injectable()
+export class HashPasswordMiddleware implements NestMiddleware {
+  async use(req: Request, res: Response, next: NextFunction) {
+    const { password } = req.body;
+
+    if (!password) {
+      throw new BadRequestException('Password is required');
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      password,
+      parseInt(process.env.BCRYPT_SALT_ROUNDS),
+    );
+
+    req.body.password = hashedPassword;
+
+    next();
+  }
+}
+```
+
+**_ Apply the middleware _**
+`src\user\user.module.ts`
+
+```typescript
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
+import { UserController } from './user.controller';
+import { UserService } from './user.service';
+import { HashPasswordMiddleware } from './middlewares/hashPassword';
+
+@Module({
+  controllers: [UserController],
+  providers: [UserService],
+})
+export class UserModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(HashPasswordMiddleware)
+      .forRoutes({ path: 'users/create-admin', method: RequestMethod.POST });
+  }
+}
+```
 
 # Setting up JWT AuthGuard in NestJS with Passport
 
