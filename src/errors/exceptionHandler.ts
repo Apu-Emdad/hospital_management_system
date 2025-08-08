@@ -28,6 +28,10 @@ export class GlobalErrorHandler implements ExceptionFilter {
         status = HttpStatus.CONFLICT;
         message = `Duplicate value for unique field: ${exception.meta?.target?.[0]}`;
       }
+      if (exception.code === 'P2025') {
+        status = HttpStatus.BAD_REQUEST;
+        message = `User Not found`;
+      }
       // Handle more Prisma error codes if needed
     }
 

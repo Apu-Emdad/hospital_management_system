@@ -10,6 +10,8 @@ yarn add @prisma/client # run after installation - npx prisma init
 yarn add @nestjs/config
 yarn add bcrypt
 yarn add -D @types/bcrypt
+yarn add @nestjs/passport passport passport-jwt @nestjs/jwt
+yarn add @types/passport-jwt -D
 
 ```
 
@@ -49,8 +51,7 @@ export class CatsModule {}
 
 ## What is a Decorator ?
 
-A **decorator** is a special function in NestJS that adds **extra behavior** to classes, methods, or properties.
-It starts with `@` and is placed **above** the thing it decorates.
+In **NestJS**, a **decorator** is a special kind of _declaration_ that can attach metadata to classes, methods, properties, or parameters. NestJS uses decorators heavily to define and configure components like controllers, services, routes, middleware, and more.
 
 **_ Example _**:
 
@@ -651,7 +652,8 @@ yarn add @nestjs/passport passport passport-jwt @nestjs/jwt
 
 ## JWT Strategy
 
-Create the `auth/strategy/jwt.strategy.ts` file:
+<u>Create the `auth/strategy/jwt.strategy.ts` file:</u>
+what it basically does is - it runs `jwt.veryfy` under the hood. And after decrypting the token it sets the decrypted data in `req.user`
 
 ```tsx
 import { Injectable } from '@nestjs/common';

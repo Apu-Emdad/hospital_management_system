@@ -4,7 +4,6 @@ import {
   IsEnum,
   IsDateString,
   Length,
-  IsBoolean,
 } from 'class-validator';
 
 export enum Gender {
