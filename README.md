@@ -1,3 +1,50 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [NestJS](#nestjs)
+  - [Installations](#installations)
+  - [Create NEST project](#create-nest-project)
+  - [What is a Module ?](#what-is-a-module-)
+  - [What is a Decorator ?](#what-is-a-decorator-)
+  - [What is Controller](#what-is-controller)
+  - [What is Provider](#what-is-provider)
+  - [Create Module CLI Command](#create-module-cli-command)
+  - [Create Controller CLI Command](#create-controller-cli-command)
+  - [Create Provider CLI Command](#create-provider-cli-command)
+- [Prisma](#prisma)
+  - [Prisma Install Command](#prisma-install-command)
+  - [Prisma commands](#prisma-commands)
+    - [**Initialize Prisma:**](#initialize-prisma)
+    - [**Set your database URL** in `.env` file:](#set-your-database-url-in-env-file)
+    - [**Run Migrations (create tables):**](#run-migrations-create-tables)
+    - [**Generate Prisma Client:**](#generate-prisma-client)
+    - [**Use Prisma Studio**](#use-prisma-studio)
+  - [Prisma Error Codes](#prisma-error-codes)
+  - [Self Relation in Prisma Model](#self-relation-in-prisma-model)
+- [@Global Module](#global-module)
+  - [Example Breakdown](#example-breakdown)
+- [Pipe](#pipe)
+  - [What it does:](#what-it-does)
+  - [Simple Example:](#simple-example)
+  - [Key Points:](#key-points)
+  - [Built-in Pipes in NestJS](#built-in-pipes-in-nestjs)
+- [Class Validator](#class-validator)
+  - [Basic Usage](#basic-usage)
+  - [**Example Validation Decorators:**](#example-validation-decorators)
+- [Global Exception Handler](#global-exception-handler)
+- [Setting Up middleware](#setting-up-middleware)
+- [Setting up JWT AuthGuard in NestJS with Passport](#setting-up-jwt-authguard-in-nestjs-with-passport)
+  - [Setup Dependencies](#setup-dependencies)
+  - [JWT Strategy](#jwt-strategy)
+  - [JWT Module Registration](#jwt-module-registration)
+  - [Sign Token Without Password](#sign-token-without-password)
+  - [AuthGuard](#authguard)
+- [Role-Based JWT AuthGuard in NestJS (Step-by-Step Guide)](#role-based-jwt-authguard-in-nestjs-step-by-step-guide)
+- [Task](#task)
+- [Install](#install)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # NestJS
 
 ## Installations
@@ -506,7 +553,7 @@ createUser(@Body() createUserDto: CreateUserDto) {
 }
 ```
 
-## **Example Validations (Decorators):**
+## **Example Validation Decorators:**
 
 | Decorator     | Description                 | Example                         |
 | ------------- | --------------------------- | ------------------------------- |
@@ -776,7 +823,7 @@ This guide assumes:
 - You want **Admins** to access `/users` (get all)
 - You want **Users** to access `/users/profile` (update self)
 
-## `/src/common/enums/role.enum.ts`
+`/src/common/enums/role.enum.ts`
 
 ```tsx
 export enum Role {
@@ -787,7 +834,7 @@ export enum Role {
 
 > This defines your valid roles.
 
-## `/src/common/decorators/roles.decorator.ts`
+`/src/common/decorators/roles.decorator.ts`
 
 ```tsx
 import { SetMetadata } from '@nestjs/common';
@@ -801,7 +848,7 @@ export const Roles = (...roles: Role[]) => SetMetadata(ROLES_KEY, roles);
 
 > Custom decorator to attach roles metadata to route handlers.
 
-## `/src/common/guards/roles.guard.ts`
+`/src/common/guards/roles.guard.ts`
 
 ```tsx
 import {
@@ -841,7 +888,7 @@ export class RolesGuard implements CanActivate {
 
 > Checks if the logged-in user has a role matching the route.
 
-## `/src/auth/jwt.strategy.ts`
+`/src/auth/jwt.strategy.ts`
 
 Assumes you're already returning user data (without password):
 
@@ -859,7 +906,7 @@ async validate(payload: {
 
 > This makes the user role available to the RolesGuard.
 
-## `/src/auth/jwt-auth.guard.ts`
+`/src/auth/jwt-auth.guard.ts`
 
 ```tsx
 import { Injectable } from '@nestjs/common';
@@ -871,7 +918,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {}
 
 > Basic JWT guard for protecting routes.
 
-## `/src/users/users.controller.ts`
+`/src/users/users.controller.ts`
 
 ```tsx
 import { Controller, Get, Patch, UseGuards, Request } from '@nestjs/common';
